@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Jumpbar Settings</title>
+    <style>
+      :root {
+        --bg: #14141a; --card: #1e1e26; --border: rgba(255,255,255,.09); --text: #f4f4f7;
+        --muted: rgba(244,244,247,.55); --field: rgba(255,255,255,.06); --chip: rgba(255,255,255,.1);
+        --accent: #8b8cff; --danger: #ff7a7a;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #f3f4f9; --card: #fff; --border: rgba(0,0,0,.08); --text: #16161a;
+          --muted: rgba(22,22,26,.55); --field: rgba(0,0,0,.045); --chip: rgba(0,0,0,.07);
+          --accent: #5b5cf0; --danger: #d63b3b;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      }
+      main { max-width: 680px; margin: 0 auto; padding: 56px 16px 80px; }
+      .logo { display: block; margin-bottom: 16px; border-radius: 13px; outline: 1px solid rgba(0,0,0,.1); outline-offset: -1px; }
+      h1 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 4px; text-wrap: balance; }
+      h2 { font-size: 15px; margin: 0 0 12px; }
+      p.lead { color: var(--muted); margin: 0 0 32px; text-wrap: pretty; }
+      .card { background: var(--card); border-radius: 16px; box-shadow: 0 0 0 1px var(--border); padding: 20px; margin-bottom: 20px; }
+      ul { list-style: none; margin: 0; padding: 0; }
+      li.engine { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+      li.engine + li.engine { border-top: 1px solid var(--border); }
+      .key { font: 600 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--chip); border-radius: 6px; padding: 3px 8px; min-width: 38px; text-align: center; }
+      .info { flex: 1; min-width: 0; }
+      .name { font-weight: 600; }
+      .tpl { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .empty { color: var(--muted); padding: 6px 0 2px; }
+      button {
+        font: inherit; color: var(--text); background: var(--chip); border: 0; border-radius: 8px;
+        padding: 6px 12px; cursor: pointer; transition: transform 120ms ease, background-color 120ms ease;
+      }
+      button:hover { background: var(--field); }
+      button:active { transform: scale(0.96); }
+      button.primary { background: var(--accent); color: #fff; font-weight: 600; }
+      button.primary:hover { filter: brightness(1.08); }
+      button.danger { color: var(--danger); }
+      form { display: grid; gap: 14px; }
+      .row { display: grid; grid-template-columns: 1fr 140px; gap: 12px; }
+      label { display: grid; gap: 6px; font-weight: 500; font-size: 13px; }
+      input {
+        font: inherit; color: var(--text); background: var(--field); border: 0; border-radius: 10px;
+        padding: 9px 12px; outline: none; box-shadow: inset 0 0 0 1px var(--border); min-width: 0;
+      }
+      input:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+      .hint { color: var(--muted); font-size: 12.5px; font-weight: 400; }
+      .error { color: var(--danger); min-height: 1.4em; font-size: 13px; }
+      .actions { display: flex; gap: 8px; align-items: center; }
+      .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; align-items: center; }
+      .presets span { color: var(--muted); font-size: 12.5px; margin-right: 2px; }
+      kbd { font: 12px ui-monospace, Menlo, monospace; background: var(--chip); border-radius: 5px; padding: 1px 6px; }
+      @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img class="logo" src="icons/icon-128.png" alt="" width="56" height="56" />
+      <h1>Jumpbar</h1>
+      <p class="lead">
+        Search engines: type a shortcut in the palette and press <kbd>Tab</kbd> to search that site directly.
+      </p>
+
+      <section class="card">
+        <ul id="list"></ul>
+      </section>
+
+      <section class="card">
+        <h2 id="form-title">Add a search engine</h2>
+        <div class="presets" id="presets"><span>Quick add:</span></div>
+        <form id="form" autocomplete="off">
+          <div class="row">
+            <label>Name
+              <input id="name" placeholder="YouTube" required />
+            </label>
+            <label>Shortcut
+              <input id="shortcut" placeholder="yt" required maxlength="12" autocapitalize="off" spellcheck="false" />
+            </label>
+          </div>
+          <label>URL with <code>%s</code> in place of the query
+            <input id="url" type="url" placeholder="https://www.youtube.com/results?search_query=%s" required spellcheck="false" />
+          </label>
+          <div class="error" id="error" role="alert"></div>
+          <div class="actions">
+            <button class="primary" type="submit" id="save">Add engine</button>
+            <button type="button" id="cancel" hidden>Cancel</button>
+          </div>
+        </form>
+      </section>
+
+      <p class="lead">The palette shortcut can be changed at <kbd>chrome://extensions/shortcuts</kbd>.</p>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>
