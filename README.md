@@ -39,11 +39,11 @@ No build step and no dependencies.
 
 | Key | Action |
 | --- | --- |
-| <kbd>Cmd</kbd>+<kbd>K</kbd> | Open / close the palette |
-| <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Tab</kbd>, <kbd>Ctrl</kbd>+<kbd>N</kbd>/<kbd>P</kbd> | Move the selection |
+| <kbd>Cmd</kbd>+<kbd>K</kbd> (<kbd>Ctrl</kbd>+<kbd>K</kbd> on Windows/Linux) | Open / close the palette |
+| <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Tab</kbd> (macOS also <kbd>Ctrl</kbd>+<kbd>N</kbd>/<kbd>P</kbd>) | Move the selection |
 | <kbd>Enter</kbd> | Open the selected item |
-| <kbd>Cmd</kbd>+<kbd>Enter</kbd> | Search the web with your default engine |
-| <kbd>Esc</kbd> | Close |
+| <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>) | Search the web with your default engine |
+| <kbd>Esc</kbd> | Clear the input; close when it's already empty |
 | <kbd>Tab</kbd> after a shortcut | Enter that search engine's mode |
 | <kbd>Backspace</kbd> on an empty input | Leave search engine mode |
 
@@ -67,10 +67,10 @@ Go to `chrome://extensions/shortcuts` (`brave://extensions/shortcuts`) and rebin
 
 ## What about Cmd+T?
 
-Browsers reserve <kbd>Cmd</kbd>+<kbd>T</kbd>, so an extension can't rebind it. Jumpbar does two things instead:
+Browsers reserve <kbd>Cmd</kbd>+<kbd>T</kbd> (<kbd>Ctrl</kbd>+<kbd>T</kbd> on Windows/Linux), so an extension can't rebind it. Jumpbar does two things instead:
 
 - It uses <kbd>Cmd</kbd>+<kbd>K</kbd> for the overlay.
-- It replaces the **New Tab page** with the same palette on a plain background, so <kbd>Cmd</kbd>+<kbd>T</kbd> also lands in the palette.
+- It replaces the **New Tab page** with the same palette on a plain background, so opening a new tab also lands in the palette.
 
 The overlay can't be injected into `chrome://` pages, the Web Store or the built-in PDF viewer. On those pages, <kbd>Cmd</kbd>+<kbd>K</kbd> opens a new tab with the palette instead.
 
