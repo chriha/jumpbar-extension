@@ -42,7 +42,7 @@ No build step and no dependencies.
 | <kbd>Cmd</kbd>+<kbd>K</kbd> (<kbd>Ctrl</kbd>+<kbd>K</kbd> on Windows/Linux) | Open / close the palette |
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Tab</kbd> (macOS also <kbd>Ctrl</kbd>+<kbd>N</kbd>/<kbd>P</kbd>) | Move the selection |
 | <kbd>Enter</kbd> | Open the selected item |
-| <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>) | Search the web with your default engine |
+| <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd> on Windows/Linux) | Search the web with your default engine |
 | <kbd>Esc</kbd> | Clear the input; close when it's already empty |
 | <kbd>Tab</kbd> after a shortcut | Enter that search engine's mode |
 | <kbd>Backspace</kbd> on an empty input | Leave search engine mode |
@@ -86,6 +86,8 @@ The overlay can't be injected into `chrome://` pages, the Web Store or the built
 | `storage` | Save your search engines |
 | `scripting` + all-sites access | Show the overlay on web pages, including tabs that were open before install |
 
+The palette runs in an extension iframe, so keystrokes typed into it never reach the page or other extensions. This is why it works alongside keyboard extensions like Vimium, which would otherwise swallow <kbd>Esc</kbd>.
+
 Jumpbar doesn't make network requests and doesn't collect or send any data.
 
 ## Project structure
@@ -93,8 +95,9 @@ Jumpbar doesn't make network requests and doesn't collect or send any data.
 ```
 manifest.json     Manifest V3 config, shortcut, permissions
 background.js     Service worker: search across tabs/closed/history, tab actions
-palette.js        The palette UI (shadow DOM), shared by overlay and New Tab page
-content.js        Mounts the overlay on web pages
+palette.js        The palette UI (shadow DOM), shared by the iframe and the New Tab page
+content.js        Embeds the palette as a full-viewport iframe on web pages
+frame.html / .js  The extension page inside that iframe (hosts the palette)
 ntp.html / .js    New Tab page hosting the palette
 options.html / .js  Search engine settings
 icons/            Logo (SVG source and PNG sizes)

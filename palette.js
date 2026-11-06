@@ -1,6 +1,6 @@
 // The palette UI. Shared by the content script (overlay) and the New Tab page.
 // Lives in a shadow root so page styles can't leak in or out.
-window.createPalette = function createPalette({ page }) {
+window.createPalette = function createPalette({ page, frame = false }) {
   const ICONS = {
     search:
       '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2 17 17"/></svg>',
@@ -128,7 +128,8 @@ window.createPalette = function createPalette({ page }) {
     @media (prefers-reduced-motion: reduce) { .root, .box, .badge { animation: none; } }
   `;
 
-  const IS_MAC = /Mac/.test(navigator.userAgentData?.platform || navigator.platform);
+  // "macOS" (userAgentData) or "MacIntel" (navigator.platform)
+  const IS_MAC = /mac/i.test(navigator.userAgentData?.platform || navigator.platform);
   const MOD = IS_MAC ? "⌘" : "Ctrl+";
   const DEFAULT_PLACEHOLDER = "Search tabs and history, or enter a URL…";
   let host = null;
@@ -289,15 +290,7 @@ window.createPalette = function createPalette({ page }) {
   }
 
   // Esc: clear the input first (keeping focus), close when it's already empty.
-  function onWindowKeyDown(e) {
-    if (e.key !== "Escape" || e.isComposing || !host) return;
-    e.preventDefault();
-    e.stopImmediatePropagation(); // pages often handle Esc themselves (e.g. by blurring the focused element)
-    window.__paletteEscDown = true;
-    escape();
-  }
-
-  function escape() {
+  function onEscape() {
     if (!host) return;
     if (input.value) {
       input.value = "";
@@ -312,7 +305,7 @@ window.createPalette = function createPalette({ page }) {
     e.stopPropagation(); // keep keystrokes away from the host page
     if (e.isComposing) return;
     switch (e.key) {
-      case "Escape": e.preventDefault(); window.__paletteEscDown = true; escape(); break;
+      case "Escape": e.preventDefault(); onEscape(); break;
       case "Backspace":
         if (engine && !input.value) { e.preventDefault(); exitEngine(); }
         break;
@@ -327,8 +320,8 @@ window.createPalette = function createPalette({ page }) {
       }
       case "Enter": {
         e.preventDefault();
-        // Cmd/Ctrl+Enter always searches the web, even when tabs match.
-        const web = e.metaKey || e.ctrlKey ? items.find((i) => i.kind === "search") : null;
+        // Cmd+Enter (macOS) / Ctrl+Enter (Windows, Linux) always searches the web, even when tabs match.
+        const web = (IS_MAC ? e.metaKey : e.ctrlKey) ? items.find((i) => i.kind === "search") : null;
         activate(web || items[selected]);
         break;
       }
@@ -414,29 +407,14 @@ window.createPalette = function createPalette({ page }) {
     host = input = list = pinned = results = badge = null;
     engine = null;
     items = [];
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return el.remove();
+    const done = () => {
+      el.remove();
+      // In the iframe the content script owns the iframe element; tell it to remove it.
+      if (frame) window.parent.postMessage({ type: "jumpbar:closed" }, "*");
+    };
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
     el.shadowRoot.querySelector(".root").classList.add("closing");
-    setTimeout(() => el.remove(), 130);
-  }
-
-  // The Esc listeners are installed once per page, at load. The content script runs at
-  // document_start, so these capture listeners come first on the window and see Esc before any page
-  // script can swallow it. They dispatch to the newest palette instance, so re-injection (which
-  // creates another instance later in the listener order) can't be starved by the page.
-  window.__paletteActive = { onKeyDown: onWindowKeyDown, isOpen: () => !!host, escape };
-  if (!window.__paletteListenersInstalled) {
-    window.__paletteListenersInstalled = true;
-    window.addEventListener("keydown", (e) => window.__paletteActive?.onKeyDown(e), true);
-    // Fallback: if another extension or the page swallowed the keydown before us, act on keyup.
-    window.addEventListener("keyup", (e) => {
-      if (e.key !== "Escape") return;
-      const active = window.__paletteActive;
-      if (active?.isOpen()) {
-        e.stopImmediatePropagation();
-        if (!window.__paletteEscDown) active.escape();
-      }
-      window.__paletteEscDown = false;
-    }, true);
+    setTimeout(done, 130);
   }
 
   return { open, close, toggle: () => (host ? close() : open()) };
