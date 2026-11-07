@@ -19,6 +19,9 @@ window.createPalette = function createPalette() {
     hint: "Press Tab",
   };
 
+  // Cmd/Ctrl+Backspace removes the selected result, for the kinds listed here.
+  const REMOVE_LABELS = { open: "close tab", history: "remove from history" };
+
   const CSS = `
     :host { all: initial; }
     * { box-sizing: border-box; }
@@ -256,9 +259,10 @@ window.createPalette = function createPalette() {
   function select(index, scroll = true) {
     if (!items.length) return;
     selected = (index + items.length) % items.length;
-    const isTab = items[selected].kind === "open";
-    foot.querySelector(".tab-hint").hidden = !isTab;
-    foot.querySelector(".esc-hint").hidden = isTab;
+    const removeLabel = REMOVE_LABELS[items[selected].kind];
+    if (removeLabel) foot.querySelector(".tab-hint-text").textContent = removeLabel;
+    foot.querySelector(".tab-hint").hidden = !removeLabel;
+    foot.querySelector(".esc-hint").hidden = !!removeLabel;
     results.querySelectorAll(".row").forEach((row) => {
       const isSel = Number(row.dataset.index) === selected;
       row.classList.toggle("sel", isSel);
@@ -319,16 +323,38 @@ window.createPalette = function createPalette() {
     }
   }
 
-  // Close the selected open tab without leaving the palette.
-  async function closeSelectedTab() {
+  // Close the selected open tab, or delete the selected history entry.
+  async function removeSelected() {
     const item = items[selected];
-    if (item?.kind !== "open") return;
-    const ok = await chrome.runtime.sendMessage({ type: "closeTab", tabId: item.tabId });
+    if (!REMOVE_LABELS[item?.kind]) return;
+    const ok = await chrome.runtime.sendMessage(
+      item.kind === "open" ? { type: "closeTab", tabId: item.tabId } : { type: "deleteHistory", url: item.url },
+    );
     if (!ok || !host || items[selected] !== item) return;
     const index = selected;
     items.splice(index, 1);
     render();
     select(Math.min(index, items.length - 1));
+  }
+
+  const isWeb = (url) => /^https?:\/\//i.test(url || "");
+
+  function flash(message) {
+    const el = foot?.querySelector(".flash");
+    if (!el) return;
+    el.textContent = message;
+    el.hidden = false;
+    clearTimeout(flash.timer);
+    flash.timer = setTimeout(() => (el.hidden = true), 1500);
+  }
+
+  async function copy(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      flash("Copied URL");
+    } catch {
+      flash("Couldn't copy");
+    }
   }
 
   function onKeyDown(e) {
@@ -343,7 +369,7 @@ window.createPalette = function createPalette() {
     }
     if ((IS_MAC ? e.metaKey : e.ctrlKey) && e.key === "Backspace") {
       e.preventDefault();
-      closeSelectedTab();
+      removeSelected();
       return;
     }
     switch (e.key) {
@@ -395,7 +421,7 @@ window.createPalette = function createPalette() {
           <span><span class="kbd">↵</span> open</span>
           <span><span class="kbd">${MOD}↵</span> search web</span>
           <span class="esc-hint"><span class="kbd">esc</span> close</span>
-          <span class="tab-hint" hidden><span class="kbd">${MOD}⌫</span> close tab</span>
+          <span class="tab-hint" hidden><span class="kbd">${MOD}⌫</span> <span class="tab-hint-text"></span></span>
           <span class="flash" hidden></span>
           <span class="link" data-act="options">Search engines…</span>
         </div>

@@ -83,6 +83,25 @@ const isWebUrl = (url) => {
   try { return ["http:", "https:"].includes(new URL(url).protocol); } catch { return false; }
 };
 
+// Two entries are the same page if their URLs match ignoring scheme, "www.", fragment and trailing
+// slash, or if they share a host and a real title (SPAs and redirects often change the URL only).
+function urlKey(url) {
+  try {
+    const u = new URL(url);
+    return u.host.replace(/^www\./, "") + u.pathname.replace(/\/+$/, "") + u.search;
+  } catch {
+    return url;
+  }
+}
+
+function dedupeKeys(url, title) {
+  const keys = [urlKey(url)];
+  if (title && title !== url) {
+    try { keys.push(`${new URL(url).host.replace(/^www\./, "")}\n${title.trim().toLowerCase()}`); } catch {}
+  }
+  return keys;
+}
+
 function isNoise(url) {
   return !url || url.startsWith("chrome://newtab") || url.startsWith("chrome-search://");
 }
@@ -148,7 +167,9 @@ async function search(rawQuery, currentTab) {
   const boost = (url) => boosts.get(url) ?? 0;
 
   // The tab the palette is opened from is never a result, so Cmd+K, Enter jumps to the previous tab.
-  const seen = new Set(currentTab?.url ? [currentTab.url] : []);
+  const seen = new Set(currentTab?.url ? dedupeKeys(currentTab.url, currentTab.title) : []);
+  const isSeen = (url, title) => dedupeKeys(url, title).some((k) => seen.has(k));
+  const markSeen = (url, title) => dedupeKeys(url, title).forEach((k) => seen.add(k));
   const results = [];
 
   // 1. Open tabs (highest priority)
@@ -167,7 +188,7 @@ async function search(rawQuery, currentTab) {
     .map((i) => ({ ...i, rank: i.match + boost(i.url) }))
     .sort((a, b) => b.rank - a.rank || b.recency - a.recency);
   for (const i of openItems) {
-    seen.add(i.url);
+    markSeen(i.url, i.title);
     results.push(i);
   }
 
@@ -176,7 +197,7 @@ async function search(rawQuery, currentTab) {
   for (const s of closed) {
     const tabsInSession = s.tab ? [s.tab] : s.window?.tabs ?? [];
     for (const t of tabsInSession) {
-      if (isNoise(t.url) || seen.has(t.url)) continue;
+      if (isNoise(t.url) || isSeen(t.url, t.title)) continue;
       const m = matchInfo(query, t.title, t.url);
       const rank = m.score;
       if (rank > 0) {
@@ -193,30 +214,30 @@ async function search(rawQuery, currentTab) {
   }
   closedItems.sort((a, b) => b.rank - a.rank);
   for (const i of closedItems) {
-    if (seen.has(i.url)) continue;
-    seen.add(i.url);
+    if (isSeen(i.url, i.title)) continue;
+    markSeen(i.url, i.title);
     results.push(i);
   }
 
   // 3. Bookmarks (folders have no url)
   const bookmarkItems = [];
   for (const b of bookmarks) {
-    if (!b.url || isNoise(b.url) || !isWebUrl(b.url) || seen.has(b.url)) continue;
+    if (!b.url || isNoise(b.url) || !isWebUrl(b.url) || isSeen(b.url, b.title)) continue;
     const m = matchInfo(query, b.title, b.url);
     if (!m.score) continue;
     bookmarkItems.push({ kind: "bookmark", title: b.title || b.url, url: b.url, fuzzy: m.fuzzy, rank: m.score + boost(b.url) });
   }
   bookmarkItems.sort((a, b) => b.rank - a.rank);
   for (const i of bookmarkItems) {
-    if (seen.has(i.url)) continue;
-    seen.add(i.url);
+    if (isSeen(i.url, i.title)) continue;
+    markSeen(i.url, i.title);
     results.push(i);
   }
 
   // 4. History, ranked by match quality plus a visit-count/recency boost
   const historyItems = [];
   for (const h of history) {
-    if (isNoise(h.url) || !isWebUrl(h.url) || seen.has(h.url)) continue;
+    if (isNoise(h.url) || !isWebUrl(h.url) || isSeen(h.url, h.title)) continue;
     // Chrome also matches anywhere in the URL (paths, query strings); only trust title and host matches.
     const m = matchInfo(query, h.title, new URL(h.url).host);
     if (!m.score || m.fuzzy) continue;
@@ -224,8 +245,8 @@ async function search(rawQuery, currentTab) {
   }
   historyItems.sort((a, b) => b.rank - a.rank);
   for (const i of historyItems) {
-    if (seen.has(i.url)) continue;
-    seen.add(i.url);
+    if (isSeen(i.url, i.title)) continue;
+    markSeen(i.url, i.title);
     results.push(i);
   }
 
@@ -300,6 +321,11 @@ async function closeTab(tabId) {
   await chrome.tabs.remove(tabId);
 }
 
+async function deleteHistory(url) {
+  if (typeof url !== "string" || !isWebUrl(url)) throw new Error("bad url");
+  await chrome.history.deleteUrl({ url });
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !msg || typeof msg !== "object") return;
   if (msg.type === "search" && typeof msg.query === "string") {
@@ -309,6 +335,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "options") {
     chrome.runtime.openOptionsPage();
     return;
+  }
+  if (msg.type === "deleteHistory") {
+    deleteHistory(msg.url).then(() => sendResponse(true), () => sendResponse(false));
+    return true;
   }
   if (msg.type === "closeTab") {
     closeTab(msg.tabId).then(() => sendResponse(true), () => sendResponse(false));
