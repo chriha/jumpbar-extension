@@ -55,10 +55,15 @@ Rebind the shortcut any time at chrome://extensions/shortcuts, which is handy if
 Note: Chrome doesn't allow extensions on internal pages (chrome://), the Chrome Web Store, or the built-in PDF viewer, so the palette can't open there. Requires Chrome 130 or newer.
 ```
 
-**Assets to upload:**
+**Assets to upload** (all ready in `store/`, 1280×800, no transparency):
 - Icon 128×128: `icons/icon-128.png`
-- At least 1 screenshot (1280×800 or 640×400). Suggested: (1) palette over a page with tab results, (2) a search engine badge such as "YouTube", (3) the settings page, (4) light mode
-- Small promo tile 440×280 (required)
+- Screenshots, in this order:
+  1. `store/screenshot-1-search.png`: mixed results for a query
+  2. `store/screenshot-2-tabs.png`: quick tab switching
+  3. `store/screenshot-3-engines.png`: custom search engine badge
+  4. `store/screenshot-4-light.png`: light mode
+  5. `store/screenshot-5-settings.png`: settings page
+- Small promo tile 440×280: `store/promo-tile-440x280.png`
 - Privacy policy URL: host `PRIVACY.md` publicly (e.g. the GitHub repo's file URL) and paste the link
 
 ## Privacy practices tab
@@ -98,7 +103,7 @@ Certify all three statements:
 - Visibility: Public
 - Regions: all regions
 
-## Before you zip and upload
+## Before you upload
 
-- Zip only: `manifest.json`, `background.js`, `content.js`, `palette.js`, `options.html`, `options.js`, `icons/` (no `.git`, README or markdown docs needed)
 - Bump `version` in `manifest.json` for every re-upload
+- Run `./scripts/pack.sh` and upload `dist/jumpbar-<version>.zip`. It includes only `manifest.json`, the JS and HTML files and `icons/` (not `store/`, `docs/` or markdown files)

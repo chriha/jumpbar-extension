@@ -11,6 +11,10 @@
 
 ---
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Jumpbar palette showing open tabs, a closed tab and history results for the query “git”" width="720" />
+</p>
+
 ## Features
 
 - **Floating palette** over a dimmed, blurred page. Opens with <kbd>Cmd</kbd>+<kbd>K</kbd> (<kbd>Ctrl</kbd>+<kbd>K</kbd> on Windows/Linux).
@@ -95,10 +99,20 @@ background.js     Service worker: search across tabs/closed/history, tab actions
 palette.js        The palette UI (shadow DOM), mounted as an overlay
 content.js        Mounts the overlay on web pages
 options.html / .js  Search engine settings
+scripts/pack.sh    Builds the zip for the Web Store
 PRIVACY.md        Privacy policy
 STORE_LISTING.md  Chrome Web Store listing text and form answers
 icons/            Logo (SVG source and PNG sizes)
 ```
+
+## Publishing to the Chrome Web Store
+
+1. Bump `version` in `manifest.json` (the store rejects an upload with a version it already has).
+2. Run `./scripts/pack.sh`. It writes `dist/jumpbar-<version>.zip` with only the files the extension needs (no docs, screenshots or git data).
+3. Optional check: unzip it somewhere, then load that folder via **Load unpacked** and try the shortcut.
+4. In the [Developer Dashboard](https://chrome.google.com/webstore/devconsole), create a new item (or open the existing one → **Package** → **Upload new package**) and upload the zip.
+5. Fill in the listing, privacy and distribution tabs using [STORE_LISTING.md](STORE_LISTING.md), and upload the images from `store/`.
+6. **Submit for review.** Reviews usually take from a few days up to a couple of weeks for a first submission.
 
 ## Roadmap
 
