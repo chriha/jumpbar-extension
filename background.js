@@ -18,31 +18,40 @@ function normalizeUrl(input) {
 }
 
 /**
- * Fuzzy subsequence match: every character of `token` must appear in `text` in order.
- * Returns 0 for no match, otherwise a score below the substring tiers (max 25),
- * higher for consecutive runs and matches that start at a word boundary.
+ * Fuzzy subsequence match: every character of `token` must appear in `text` in order, and the
+ * matched characters must sit close together (at most two skipped characters, so "test" doesn't match "the best stuff today").
+ * Returns 0 for no match, otherwise a score below the substring tiers (max 25).
  */
 function fuzzy(token, text) {
-  if (token.length < 2 || !text) return 0;
+  if (token.length < 3 || !text) return 0;
   let ti = 0;
   let run = 0;
   let bonus = 0;
+  let first = -1;
+  let last = -1;
   for (let i = 0; i < text.length && ti < token.length; i++) {
     if (text[i] !== token[ti]) { run = 0; continue; }
+    if (first < 0) first = i;
+    last = i;
     run++;
     if (run > 1) bonus += 2;
     if (i === 0 || /[\s\-_./:]/.test(text[i - 1])) bonus += 3;
     ti++;
   }
-  return ti === token.length ? Math.min(25, 8 + bonus) : 0;
+  if (ti < token.length || last - first + 1 > token.length + 2) return 0;
+  return Math.min(25, 8 + bonus);
 }
 
-/** Every whitespace-separated token must match; returns 0 for no match. */
-function score(query, title, url) {
-  if (!query) return 1;
+/**
+ * Every whitespace-separated token must match, otherwise score is 0. `fuzzy` is true when any token
+ * only matched as a loose subsequence rather than as a real substring.
+ */
+function matchInfo(query, title, url) {
+  if (!query) return { score: 1, fuzzy: false };
   const t = (title || "").toLowerCase();
   const u = (url || "").toLowerCase().replace(/^https?:\/\/(www\.)?/, "");
   let total = 0;
+  let loose = false;
   for (const token of query.split(/\s+/)) {
     let s = 0;
     if (t.startsWith(token)) s = 100;
@@ -50,12 +59,17 @@ function score(query, title, url) {
     else if (t.includes(token)) s = 50;
     else if (u.startsWith(token)) s = 60;
     else if (u.includes(token)) s = 30;
-    else s = Math.max(fuzzy(token, t), fuzzy(token, u.split("/")[0]) * 0.8);
-    if (!s) return 0;
+    else {
+      s = Math.max(fuzzy(token, t), fuzzy(token, u.split("/")[0]) * 0.8);
+      loose = true;
+    }
+    if (!s) return { score: 0, fuzzy: false };
     total += s;
   }
-  return total;
+  return { score: total, fuzzy: loose };
 }
+
+const score = (query, title, url) => matchInfo(query, title, url).score;
 
 /** Frecency-style boost for history: more visits and more recent visits rank higher (0-30). */
 function historyBoost(h) {
@@ -146,7 +160,7 @@ async function search(rawQuery, currentTab) {
       url: t.url,
       tabId: t.id,
       windowId: t.windowId,
-      match: score(query, t.title, t.url),
+      ...(() => { const m = matchInfo(query, t.title, t.url); return { match: m.score, fuzzy: m.fuzzy }; })(),
       recency: t.lastAccessed || 0,
     }))
     .filter((i) => i.match > 0)
@@ -163,13 +177,15 @@ async function search(rawQuery, currentTab) {
     const tabsInSession = s.tab ? [s.tab] : s.window?.tabs ?? [];
     for (const t of tabsInSession) {
       if (isNoise(t.url) || seen.has(t.url)) continue;
-      const rank = score(query, t.title, t.url);
+      const m = matchInfo(query, t.title, t.url);
+      const rank = m.score;
       if (rank > 0) {
         closedItems.push({
           kind: "closed",
           title: t.title || t.url,
           url: t.url,
           sessionId: t.sessionId ?? s.window?.sessionId,
+          fuzzy: m.fuzzy,
           rank: rank + boost(t.url),
         });
       }
@@ -186,7 +202,9 @@ async function search(rawQuery, currentTab) {
   const bookmarkItems = [];
   for (const b of bookmarks) {
     if (!b.url || isNoise(b.url) || !isWebUrl(b.url) || seen.has(b.url)) continue;
-    bookmarkItems.push({ kind: "bookmark", title: b.title || b.url, url: b.url, rank: (score(query, b.title, b.url) || 1) + boost(b.url) });
+    const m = matchInfo(query, b.title, b.url);
+    if (!m.score) continue;
+    bookmarkItems.push({ kind: "bookmark", title: b.title || b.url, url: b.url, fuzzy: m.fuzzy, rank: m.score + boost(b.url) });
   }
   bookmarkItems.sort((a, b) => b.rank - a.rank);
   for (const i of bookmarkItems) {
@@ -199,8 +217,10 @@ async function search(rawQuery, currentTab) {
   const historyItems = [];
   for (const h of history) {
     if (isNoise(h.url) || !isWebUrl(h.url) || seen.has(h.url)) continue;
-    const match = score(query, h.title, h.url) || 1;
-    historyItems.push({ kind: "history", title: h.title || h.url, url: h.url, rank: match + historyBoost(h) + boost(h.url) });
+    // Chrome also matches anywhere in the URL (paths, query strings); only trust title and host matches.
+    const m = matchInfo(query, h.title, new URL(h.url).host);
+    if (!m.score || m.fuzzy) continue;
+    historyItems.push({ kind: "history", title: h.title || h.url, url: h.url, rank: m.score + historyBoost(h) + boost(h.url) });
   }
   historyItems.sort((a, b) => b.rank - a.rank);
   for (const i of historyItems) {
@@ -209,7 +229,9 @@ async function search(rawQuery, currentTab) {
     results.push(i);
   }
 
-  const capped = results.slice(0, MAX_RESULTS);
+  // Loose subsequence matches only fill in when nothing matches the query for real.
+  const hasExact = results.some((r) => !r.fuzzy);
+  const capped = (hasExact ? results.filter((r) => !r.fuzzy) : results).slice(0, MAX_RESULTS);
 
   // 5. Direct URL / web search actions
   const actions = [];
