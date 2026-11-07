@@ -17,6 +17,26 @@ function normalizeUrl(input) {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `https://${s}`;
 }
 
+/**
+ * Fuzzy subsequence match: every character of `token` must appear in `text` in order.
+ * Returns 0 for no match, otherwise a score below the substring tiers (max 25),
+ * higher for consecutive runs and matches that start at a word boundary.
+ */
+function fuzzy(token, text) {
+  if (token.length < 2 || !text) return 0;
+  let ti = 0;
+  let run = 0;
+  let bonus = 0;
+  for (let i = 0; i < text.length && ti < token.length; i++) {
+    if (text[i] !== token[ti]) { run = 0; continue; }
+    run++;
+    if (run > 1) bonus += 2;
+    if (i === 0 || /[\s\-_./:]/.test(text[i - 1])) bonus += 3;
+    ti++;
+  }
+  return ti === token.length ? Math.min(25, 8 + bonus) : 0;
+}
+
 /** Every whitespace-separated token must match; returns 0 for no match. */
 function score(query, title, url) {
   if (!query) return 1;
@@ -30,10 +50,19 @@ function score(query, title, url) {
     else if (t.includes(token)) s = 50;
     else if (u.startsWith(token)) s = 60;
     else if (u.includes(token)) s = 30;
+    else s = Math.max(fuzzy(token, t), fuzzy(token, u.split("/")[0]) * 0.8);
     if (!s) return 0;
     total += s;
   }
   return total;
+}
+
+/** Frecency-style boost for history: more visits and more recent visits rank higher (0-30). */
+function historyBoost(h) {
+  const days = Math.max(0, (Date.now() - (h.lastVisitTime || 0)) / 86400000);
+  const recency = 20 / (1 + days / 7);
+  const frequency = Math.min(10, Math.log2(1 + (h.visitCount || 0)) * 2);
+  return recency + frequency;
 }
 
 const isWebUrl = (url) => {
@@ -57,7 +86,7 @@ async function search(rawQuery, currentTab) {
     chrome.tabs.query({}),
     hideRegular ? Promise.resolve([]) : chrome.sessions.getRecentlyClosed({ maxResults: 25 }),
     query && !hideRegular
-      ? chrome.history.search({ text: rawQuery.trim(), maxResults: 40, startTime: 0 })
+      ? chrome.history.search({ text: rawQuery.trim(), maxResults: 100, startTime: 0 })
       : Promise.resolve([]),
   ]);
 
@@ -109,11 +138,18 @@ async function search(rawQuery, currentTab) {
     results.push(i);
   }
 
-  // 3. History
+  // 3. History, ranked by match quality plus a visit-count/recency boost
+  const historyItems = [];
   for (const h of history) {
     if (isNoise(h.url) || !isWebUrl(h.url) || seen.has(h.url)) continue;
-    seen.add(h.url);
-    results.push({ kind: "history", title: h.title || h.url, url: h.url });
+    const match = score(query, h.title, h.url) || 1;
+    historyItems.push({ kind: "history", title: h.title || h.url, url: h.url, rank: match + historyBoost(h) });
+  }
+  historyItems.sort((a, b) => b.rank - a.rank);
+  for (const i of historyItems) {
+    if (seen.has(i.url)) continue;
+    seen.add(i.url);
+    results.push(i);
   }
 
   const capped = results.slice(0, MAX_RESULTS);
