@@ -82,10 +82,10 @@ function resetForm() {
   $("cancel").hidden = true;
 }
 
-function validate({ name, shortcut, url }) {
+function validate({ name, shortcut, url }, existing = engines, ignoreId = editingId) {
   if (!name) return "Give the engine a name.";
   if (!/^[a-z0-9]+$/.test(shortcut)) return "The shortcut can only contain letters and numbers.";
-  if (engines.some((e) => e.shortcut === shortcut && e.id !== editingId))
+  if (existing.some((e) => e.shortcut === shortcut && e.id !== ignoreId))
     return `The shortcut “${shortcut}” is already in use.`;
   if (!url.includes("%s")) return "The URL needs %s where the query should go.";
   try {
@@ -113,6 +113,48 @@ $("form").addEventListener("submit", async (ev) => {
   await save();
   resetForm();
   renderList();
+});
+
+$("export").addEventListener("click", () => {
+  const data = engines.map(({ name, shortcut, url }) => ({ name, shortcut, url }));
+  const blob = new Blob([JSON.stringify({ jumpbarEngines: 1, engines: data }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "jumpbar-search-engines.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$("import").addEventListener("click", () => $("import-file").click());
+
+$("import-file").addEventListener("change", async (ev) => {
+  const file = ev.target.files[0];
+  ev.target.value = "";
+  const status = $("io-status");
+  if (!file) return;
+  try {
+    if (file.size > 1_000_000) throw new Error("too big");
+    const parsed = JSON.parse(await file.text());
+    const list = Array.isArray(parsed) ? parsed : parsed?.engines;
+    if (!Array.isArray(list)) throw new Error("no engines");
+    let added = 0;
+    let skipped = 0;
+    for (const raw of list) {
+      const entry = {
+        name: String(raw?.name ?? "").trim().slice(0, 60),
+        shortcut: String(raw?.shortcut ?? "").trim().toLowerCase().slice(0, 12),
+        url: String(raw?.url ?? "").trim(),
+      };
+      // Same rules as the form; entries whose shortcut already exists are skipped, never overwritten.
+      if (validate(entry, engines, null)) { skipped++; continue; }
+      engines.push({ id: crypto.randomUUID(), ...entry });
+      added++;
+    }
+    if (added) { await save(); renderList(); }
+    status.textContent = `Imported ${added} engine${added === 1 ? "" : "s"}` + (skipped ? `, skipped ${skipped} (invalid or shortcut already in use).` : ".");
+  } catch {
+    status.textContent = "That file isn't a valid Jumpbar search engine export.";
+  }
 });
 
 $("cancel").addEventListener("click", resetForm);

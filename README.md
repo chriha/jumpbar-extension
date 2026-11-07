@@ -67,6 +67,8 @@ Open the settings page (right-click the toolbar icon → *Options*, or **Search 
 
 Then in the palette: type `yt`, press <kbd>Tab</kbd>, type `lofi beats`, press <kbd>Enter</kbd>. The query is URL-encoded and substituted for `%s`. Only `https` URLs are accepted. Engines are stored in `chrome.storage.sync`.
 
+Use **Export…** / **Import…** on the settings page to back up engines or move them to another browser. Imports are validated like the form, and engines whose shortcut already exists are skipped.
+
 ### Private windows
 
 If you've allowed Jumpbar in Incognito, it keeps private and regular browsing separate by default: regular windows never show private tabs, and a private window only shows its own tabs. Tick **Include tabs across private and regular windows** in the settings page to mix them.
@@ -116,10 +118,6 @@ icons/            Logo (SVG source and PNG sizes)
 4. In the [Developer Dashboard](https://chrome.google.com/webstore/devconsole), create a new item (or open the existing one → **Package** → **Upload new package**) and upload the zip.
 5. Fill in the listing, privacy and distribution tabs using [STORE_LISTING.md](STORE_LISTING.md), and upload the images from `store/`.
 6. **Submit for review.** Reviews usually take from a few days up to a couple of weeks for a first submission.
-
-## Roadmap
-
-- Import/export of search engines
 
 ## Development
 
