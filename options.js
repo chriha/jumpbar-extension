@@ -179,3 +179,8 @@ chrome.storage.sync.get({ engines: [], includePrivate: false }).then((r) => {
 
 $("include-private").addEventListener("change", (e) =>
   chrome.storage.sync.set({ includePrivate: e.target.checked }));
+
+$("forget").addEventListener("click", async () => {
+  await chrome.storage.local.remove("picks");
+  $("forget-status").textContent = "Learned picks cleared.";
+});

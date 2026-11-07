@@ -14,11 +14,13 @@ Jumpbar reads the following **locally in your browser**, only while you are usin
 - **Browsing history**: titles and URLs matching what you type.
 - **Site icons**: fetched from Chrome's own local favicon cache.
 
-This information is never written to disk by Jumpbar, never transmitted anywhere, and is discarded when the palette closes.
+Apart from the learned picks described under “What Jumpbar stores”, this information is never written to disk by Jumpbar, never transmitted anywhere, and is discarded when the palette closes.
 
 ## What Jumpbar stores
 
-Jumpbar saves only your **settings** in `chrome.storage.sync`:
+On this device only (`chrome.storage.local`, never synced), Jumpbar remembers which result you chose for a search so it can rank that result higher next time: the text you typed and the URL you picked, for up to 300 recent searches. Nothing is recorded from private windows. You can erase it any time with **Forget learned picks** on the settings page.
+
+In `chrome.storage.sync`, Jumpbar saves only your **settings**:
 
 - the custom search engines you add (name, shortcut, URL template)
 - the "include tabs across private and regular windows" preference

@@ -290,7 +290,7 @@ window.createPalette = function createPalette() {
     if (!item) return;
     if (item.kind === "hint") return enterEngine(item.engine);
     if (item.kind === "engine") item = { kind: "engine", url: item.target };
-    chrome.runtime.sendMessage({ type: "activate", item });
+    chrome.runtime.sendMessage({ type: "activate", item, query: input.value });
     close();
   }
 

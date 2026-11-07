@@ -73,6 +73,39 @@ function isNoise(url) {
   return !url || url.startsWith("chrome://newtab") || url.startsWith("chrome-search://");
 }
 
+// ---------- learned picks ----------
+// Remembers which result you chose for a query so it ranks higher next time. Stored locally only
+// (chrome.storage.local), never synced, and never recorded from private windows.
+
+const MAX_PICK_QUERIES = 300;
+
+async function recordPick(query, url) {
+  const q = query.trim().toLowerCase().slice(0, 60);
+  if (!q || typeof url !== "string" || !isWebUrl(url)) return;
+  const { picks = {} } = await chrome.storage.local.get("picks");
+  const entry = picks[q] ?? { urls: {}, at: 0 };
+  entry.urls[url] = (entry.urls[url] ?? 0) + 1;
+  entry.at = Date.now();
+  delete picks[q];
+  picks[q] = entry; // re-insert so the newest queries sit last
+  for (const old of Object.keys(picks).slice(0, Math.max(0, Object.keys(picks).length - MAX_PICK_QUERIES))) delete picks[old];
+  await chrome.storage.local.set({ picks });
+}
+
+/** url -> boost (0-45). Applies when the typed query and a remembered query are prefixes of one another. */
+function pickBoosts(picks, query) {
+  const boosts = new Map();
+  if (!query) return boosts;
+  for (const [q, entry] of Object.entries(picks)) {
+    if (!q.startsWith(query) && !query.startsWith(q)) continue;
+    const weight = q === query ? 1 : 0.6;
+    for (const [url, count] of Object.entries(entry.urls)) {
+      boosts.set(url, Math.max(boosts.get(url) ?? 0, Math.min(count, 3) * 15 * weight));
+    }
+  }
+  return boosts;
+}
+
 // ---------- search ----------
 
 async function search(rawQuery, currentTab) {
@@ -82,7 +115,7 @@ async function search(rawQuery, currentTab) {
   // With private/regular mixing off, a private window must not surface regular browsing (closed tabs, history).
   const hideRegular = !settings.includePrivate && !!currentTab?.incognito;
 
-  const [tabs, closed, history, bookmarks] = await Promise.all([
+  const [tabs, closed, history, bookmarks, { picks = {} }] = await Promise.all([
     chrome.tabs.query({}),
     hideRegular ? Promise.resolve([]) : chrome.sessions.getRecentlyClosed({ maxResults: 25 }),
     query && !hideRegular
@@ -90,7 +123,10 @@ async function search(rawQuery, currentTab) {
       : Promise.resolve([]),
     // Bookmarks are saved on purpose, but a private window shouldn't surface regular browsing data.
     query && !hideRegular ? chrome.bookmarks.search(query).catch(() => []) : Promise.resolve([]),
+    chrome.storage.local.get("picks"),
   ]);
+  const boosts = pickBoosts(picks, query);
+  const boost = (url) => boosts.get(url) ?? 0;
 
   // The tab the palette is opened from is never a result, so Cmd+K, Enter jumps to the previous tab.
   const seen = new Set(currentTab?.url ? [currentTab.url] : []);
@@ -107,10 +143,11 @@ async function search(rawQuery, currentTab) {
       windowId: t.windowId,
       pinned: t.pinned,
       muted: !!t.mutedInfo?.muted,
-      rank: score(query, t.title, t.url),
+      match: score(query, t.title, t.url),
       recency: t.lastAccessed || 0,
     }))
-    .filter((i) => i.rank > 0)
+    .filter((i) => i.match > 0)
+    .map((i) => ({ ...i, rank: i.match + boost(i.url) }))
     .sort((a, b) => b.rank - a.rank || b.recency - a.recency);
   for (const i of openItems) {
     seen.add(i.url);
@@ -130,7 +167,7 @@ async function search(rawQuery, currentTab) {
           title: t.title || t.url,
           url: t.url,
           sessionId: t.sessionId ?? s.window?.sessionId,
-          rank,
+          rank: rank + boost(t.url),
         });
       }
     }
@@ -146,7 +183,7 @@ async function search(rawQuery, currentTab) {
   const bookmarkItems = [];
   for (const b of bookmarks) {
     if (!b.url || isNoise(b.url) || !isWebUrl(b.url) || seen.has(b.url)) continue;
-    bookmarkItems.push({ kind: "bookmark", title: b.title || b.url, url: b.url, rank: score(query, b.title, b.url) || 1 });
+    bookmarkItems.push({ kind: "bookmark", title: b.title || b.url, url: b.url, rank: (score(query, b.title, b.url) || 1) + boost(b.url) });
   }
   bookmarkItems.sort((a, b) => b.rank - a.rank);
   for (const i of bookmarkItems) {
@@ -160,7 +197,7 @@ async function search(rawQuery, currentTab) {
   for (const h of history) {
     if (isNoise(h.url) || !isWebUrl(h.url) || seen.has(h.url)) continue;
     const match = score(query, h.title, h.url) || 1;
-    historyItems.push({ kind: "history", title: h.title || h.url, url: h.url, rank: match + historyBoost(h) });
+    historyItems.push({ kind: "history", title: h.title || h.url, url: h.url, rank: match + historyBoost(h) + boost(h.url) });
   }
   historyItems.sort((a, b) => b.rank - a.rank);
   for (const i of historyItems) {
@@ -191,8 +228,11 @@ async function search(rawQuery, currentTab) {
 // untrusted: validate every field and never open anything that wasn't an http(s) URL.
 const isId = (n) => Number.isInteger(n) && n >= 0;
 
-async function activate(item) {
+async function activate(item, query, sender) {
   if (!item || typeof item !== "object") throw new Error("bad item");
+  if (typeof query === "string" && !sender?.tab?.incognito && ["open", "closed", "bookmark", "history"].includes(item.kind)) {
+    await recordPick(query, item.url).catch(() => {});
+  }
   switch (item.kind) {
     case "open":
       if (!isId(item.tabId) || !isId(item.windowId)) throw new Error("bad ids");
@@ -256,7 +296,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === "activate") {
-    activate(msg.item).then(() => sendResponse(true), () => sendResponse(false));
+    activate(msg.item, msg.query, sender).then(() => sendResponse(true), () => sendResponse(false));
     return true;
   }
 });
