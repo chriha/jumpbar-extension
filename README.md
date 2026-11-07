@@ -27,6 +27,7 @@
 - **Fuzzy matching.** Typing `ghb` finds GitHub. Exact and word-start matches rank first, and history is ordered by how often and how recently you visit a page.
 - **Open sites directly.** Type `www.example.com`, `https://…` or `example.com` and press <kbd>Enter</kbd>.
 - **Web search always one keystroke away.** A "Search for…" row stays pinned below the results, and <kbd>Cmd</kbd>+<kbd>Enter</kbd> searches the web even when tabs match. Results are capped at 10.
+- **`?` prefix.** Start with `?` (for example `? best pizza`) to skip your tabs and history and search the web directly.
 - **Personal search engines.** Define a shortcut like `yt`, type it, press <kbd>Tab</kbd>, and a badge appears. Whatever you type next is sent to that site's search.
 - Follows light and dark mode and respects reduced motion.
 

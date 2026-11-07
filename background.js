@@ -109,6 +109,11 @@ function pickBoosts(picks, query) {
 // ---------- search ----------
 
 async function search(rawQuery, currentTab) {
+  // "? something" skips tabs, bookmarks and history and goes straight to a web search.
+  if (rawQuery.trimStart().startsWith("?")) {
+    const text = rawQuery.trimStart().slice(1).trim();
+    return text ? [{ kind: "search", title: text, text }] : [];
+  }
   const query = rawQuery.trim().toLowerCase();
 
   const settings = await chrome.storage.sync.get({ includePrivate: false });
