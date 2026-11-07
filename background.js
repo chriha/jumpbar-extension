@@ -105,6 +105,8 @@ async function search(rawQuery, currentTab) {
       url: t.url,
       tabId: t.id,
       windowId: t.windowId,
+      pinned: t.pinned,
+      muted: !!t.mutedInfo?.muted,
       rank: score(query, t.title, t.url),
       recency: t.lastAccessed || 0,
     }))
@@ -228,6 +230,17 @@ async function activate(item) {
   }
 }
 
+async function tabAction(action, tabId) {
+  if (!isId(tabId)) throw new Error("bad id");
+  const tab = await chrome.tabs.get(tabId);
+  switch (action) {
+    case "close": await chrome.tabs.remove(tabId); return {};
+    case "pin": await chrome.tabs.update(tabId, { pinned: !tab.pinned }); return { pinned: !tab.pinned };
+    case "mute": await chrome.tabs.update(tabId, { muted: !tab.mutedInfo?.muted }); return { muted: !tab.mutedInfo?.muted };
+    default: throw new Error("unknown action");
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !msg || typeof msg !== "object") return;
   if (msg.type === "search" && typeof msg.query === "string") {
@@ -237,6 +250,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "options") {
     chrome.runtime.openOptionsPage();
     return;
+  }
+  if (msg.type === "tabAction") {
+    tabAction(msg.action, msg.tabId).then(sendResponse, () => sendResponse(null));
+    return true;
   }
   if (msg.type === "activate") {
     activate(msg.item).then(() => sendResponse(true), () => sendResponse(false));

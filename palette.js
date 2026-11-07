@@ -116,6 +116,7 @@ window.createPalette = function createPalette() {
     }
     .foot span { display: flex; align-items: center; gap: 6px; }
     .foot .kbd { display: grid; height: 18px; min-width: 18px; }
+    .foot [hidden] { display: none; }
     .foot .link { margin-left: auto; cursor: pointer; }
     .foot .link:hover { color: var(--text); }
     .root.closing { animation: fade-out 120ms ease-in forwards; pointer-events: none; }
@@ -143,6 +144,7 @@ window.createPalette = function createPalette() {
   let engines = [];
   let engine = null; // active custom search engine ("badge" mode)
   let badge = null;
+  let foot = null;
 
   function loadEngines() {
     chrome.storage.sync.get("engines").then((r) => (engines = r.engines || []), () => {});
@@ -232,7 +234,7 @@ window.createPalette = function createPalette() {
     const tag = document.createElement("div");
     tag.className = "tag";
     const label = document.createElement("span");
-    label.textContent = LABELS[item.kind];
+    label.textContent = LABELS[item.kind] + (item.pinned ? " · Pinned" : "") + (item.muted ? " · Muted" : "");
     const kbd = document.createElement("span");
     kbd.className = "kbd";
     kbd.textContent = "↵";
@@ -253,6 +255,9 @@ window.createPalette = function createPalette() {
   function select(index, scroll = true) {
     if (!items.length) return;
     selected = (index + items.length) % items.length;
+    const isTab = items[selected].kind === "open";
+    foot.querySelector(".tab-hint").hidden = !isTab;
+    foot.querySelector(".esc-hint").hidden = isTab;
     results.querySelectorAll(".row").forEach((row) => {
       const isSel = Number(row.dataset.index) === selected;
       row.classList.toggle("sel", isSel);
@@ -313,9 +318,26 @@ window.createPalette = function createPalette() {
     }
   }
 
+  // Close / pin / mute the selected open tab without leaving the palette.
+  async function tabAction(action) {
+    const item = items[selected];
+    if (item?.kind !== "open") return;
+    const res = await chrome.runtime.sendMessage({ type: "tabAction", action, tabId: item.tabId });
+    if (!res || !host || items[selected] !== item) return;
+    const index = selected;
+    if (action === "close") items.splice(index, 1);
+    else Object.assign(item, res);
+    render();
+    select(Math.min(index, items.length - 1));
+  }
+
   function onKeyDown(e) {
     e.stopPropagation(); // keep keystrokes away from the host page
     if (e.isComposing) return;
+    if (IS_MAC ? e.metaKey : e.ctrlKey) {
+      const action = e.key === "Backspace" ? "close" : e.shiftKey && e.code === "KeyP" ? "pin" : e.shiftKey && e.code === "KeyU" ? "mute" : null;
+      if (action) { e.preventDefault(); tabAction(action); return; }
+    }
     switch (e.key) {
       case "Escape": e.preventDefault(); window.__paletteEscDown = true; lastEscAt = performance.now(); escape(); break;
       case "Backspace":
@@ -364,7 +386,8 @@ window.createPalette = function createPalette() {
           <span><span class="kbd">↑</span><span class="kbd">↓</span> navigate</span>
           <span><span class="kbd">↵</span> open</span>
           <span><span class="kbd">${MOD}↵</span> search web</span>
-          <span><span class="kbd">esc</span> close</span>
+          <span class="esc-hint"><span class="kbd">esc</span> close</span>
+          <span class="tab-hint" hidden><span class="kbd">${MOD}⌫</span> close tab <span class="kbd">${MOD}⇧P</span> pin <span class="kbd">${MOD}⇧U</span> mute</span>
           <span class="link" data-act="options">Search engines…</span>
         </div>
       </div>`;
@@ -375,6 +398,7 @@ window.createPalette = function createPalette() {
     list = shadow.querySelector(".list");
     pinned = shadow.querySelector(".pinned");
     results = shadow.querySelector(".results");
+    foot = shadow.querySelector(".foot");
 
     input.addEventListener("input", () => runSearch(input.value));
     input.addEventListener("keydown", onKeyDown);
@@ -427,7 +451,7 @@ window.createPalette = function createPalette() {
     const el = host;
     const root = rootEl;
     rootEl = null;
-    host = input = list = pinned = results = badge = null;
+    host = input = list = pinned = results = badge = foot = null;
     engine = null;
     items = [];
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return el.remove();

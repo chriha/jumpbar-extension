@@ -49,6 +49,7 @@ No build step and no dependencies.
 | <kbd>↑</kbd> <kbd>↓</kbd>, <kbd>Tab</kbd> (macOS also <kbd>Ctrl</kbd>+<kbd>N</kbd>/<kbd>P</kbd>) | Move the selection |
 | <kbd>Enter</kbd> | Open the selected item |
 | <kbd>Cmd</kbd>+<kbd>Enter</kbd> (<kbd>Ctrl</kbd>+<kbd>Enter</kbd> on Windows/Linux) | Search the web with your default engine |
+| <kbd>Cmd</kbd>+<kbd>Backspace</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>U</kbd> on an open tab | Close / pin / mute that tab |
 | <kbd>Esc</kbd> | Clear the input; close when it's already empty |
 | <kbd>Tab</kbd> after a shortcut | Enter that search engine's mode |
 | <kbd>Backspace</kbd> on an empty input | Leave search engine mode |
