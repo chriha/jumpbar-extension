@@ -129,7 +129,11 @@ for (const preset of PRESETS) {
   $("presets").append(b);
 }
 
-chrome.storage.sync.get("engines").then((r) => {
-  engines = r.engines || [];
+chrome.storage.sync.get({ engines: [], includePrivate: true }).then((r) => {
+  engines = r.engines;
+  $("include-private").checked = r.includePrivate;
   renderList();
 });
+
+$("include-private").addEventListener("change", (e) =>
+  chrome.storage.sync.set({ includePrivate: e.target.checked }));

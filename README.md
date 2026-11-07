@@ -61,6 +61,10 @@ Open the settings page (right-click the toolbar icon → *Options*, or **Search 
 
 Then in the palette: type `yt`, press <kbd>Tab</kbd>, type `lofi beats`, press <kbd>Enter</kbd>. The query is URL-encoded and substituted for `%s`. Engines are stored in `chrome.storage.sync`.
 
+### Private windows
+
+If you've allowed Jumpbar in Incognito, its tabs show up in results. With **Include tabs across private and regular windows** unticked in the settings page, the two stay separate: regular windows never show private tabs, and a private window only shows its own tabs.
+
 ### Changing the shortcut
 
 Go to `chrome://extensions/shortcuts` (`brave://extensions/shortcuts`) and rebind **Open the search palette**.

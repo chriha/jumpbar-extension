@@ -45,10 +45,14 @@ function isNoise(url) {
 async function search(rawQuery, currentTab) {
   const query = rawQuery.trim().toLowerCase();
 
+  const settings = await chrome.storage.sync.get({ includePrivate: true });
+  // With private/regular mixing off, a private window must not surface regular browsing (closed tabs, history).
+  const hideRegular = !settings.includePrivate && !!currentTab?.incognito;
+
   const [tabs, closed, history] = await Promise.all([
     chrome.tabs.query({}),
-    chrome.sessions.getRecentlyClosed({ maxResults: 25 }),
-    query
+    hideRegular ? Promise.resolve([]) : chrome.sessions.getRecentlyClosed({ maxResults: 25 }),
+    query && !hideRegular
       ? chrome.history.search({ text: rawQuery.trim(), maxResults: 40, startTime: 0 })
       : Promise.resolve([]),
   ]);
@@ -59,7 +63,7 @@ async function search(rawQuery, currentTab) {
 
   // 1. Open tabs (highest priority)
   const openItems = tabs
-    .filter((t) => !isNoise(t.url) && t.id !== currentTab?.id)
+    .filter((t) => !isNoise(t.url) && t.id !== currentTab?.id && (settings.includePrivate || t.incognito === !!currentTab?.incognito))
     .map((t) => ({
       kind: "open",
       title: t.title || t.url,

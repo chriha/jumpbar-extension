@@ -60,6 +60,9 @@
       .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; align-items: center; }
       .presets span { color: var(--muted); font-size: 12.5px; margin-right: 2px; }
       kbd { font: 12px ui-monospace, Menlo, monospace; background: var(--chip); border-radius: 5px; padding: 1px 6px; }
+      label.toggle { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; cursor: pointer; }
+      label.toggle input { flex: none; width: 20px; height: 20px; margin: 0; padding: 0; accent-color: var(--accent); box-shadow: none; cursor: pointer; }
+      label.toggle > span { display: grid; gap: 2px; }
       @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
     </style>
   </head>
@@ -70,6 +73,16 @@
       <p class="lead">
         Search engines: type a shortcut in the palette and press <kbd>Tab</kbd> to search that site directly.
       </p>
+
+      <section class="card">
+        <label class="toggle">
+          <input type="checkbox" id="include-private" />
+          <span>
+            <span class="name">Include tabs across private and regular windows</span>
+            <span class="hint">When off, private windows only see their own tabs and regular windows never see private ones. Only applies if Jumpbar is allowed in Incognito (<kbd>chrome://extensions</kbd> → Details).</span>
+          </span>
+        </label>
+      </section>
 
       <section class="card">
         <ul id="list"></ul>
