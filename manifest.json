@@ -1,24 +1,57 @@
 {
   "manifest_version": 3,
   "name": "Jumpbar",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "minimum_chrome_version": "130",
   "description": "An Arc-style command palette: search open tabs, recently closed tabs and history, open URLs, or search the web.",
-  "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "128": "icons/icon-128.png" },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
     "default_title": "Open Jumpbar",
-    "default_icon": { "16": "icons/icon-16.png", "32": "icons/icon-32.png" }
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
   },
-  "permissions": ["activeTab", "tabs", "history", "sessions", "search", "favicon", "scripting", "storage"],
-  "background": { "service_worker": "background.js" },
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "history",
+    "sessions",
+    "search",
+    "favicon",
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "commands": {
     "toggle-palette": {
-      "suggested_key": { "default": "Ctrl+K", "mac": "Command+K" },
+      "suggested_key": {
+        "default": "Ctrl+K",
+        "mac": "Command+K"
+      },
       "description": "Open the search palette"
     }
   },
-  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "web_accessible_resources": [
-    { "resources": ["_favicon/*"], "matches": ["<all_urls>"], "use_dynamic_url": true }
+    {
+      "resources": [
+        "_favicon/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ],
+      "use_dynamic_url": true
+    }
   ]
 }
