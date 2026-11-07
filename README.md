@@ -59,15 +59,17 @@ Open the settings page (right-click the toolbar icon → *Options*, or **Search 
 | Shortcut | `yt` |
 | URL with `%s` in place of the query | `https://www.youtube.com/results?search_query=%s` |
 
-Then in the palette: type `yt`, press <kbd>Tab</kbd>, type `lofi beats`, press <kbd>Enter</kbd>. The query is URL-encoded and substituted for `%s`. Engines are stored in `chrome.storage.sync`.
+Then in the palette: type `yt`, press <kbd>Tab</kbd>, type `lofi beats`, press <kbd>Enter</kbd>. The query is URL-encoded and substituted for `%s`. Only `https` URLs are accepted. Engines are stored in `chrome.storage.sync`.
 
 ### Private windows
 
-If you've allowed Jumpbar in Incognito, its tabs show up in results. With **Include tabs across private and regular windows** unticked in the settings page, the two stay separate: regular windows never show private tabs, and a private window only shows its own tabs.
+If you've allowed Jumpbar in Incognito, it keeps private and regular browsing separate by default: regular windows never show private tabs, and a private window only shows its own tabs. Tick **Include tabs across private and regular windows** in the settings page to mix them.
 
 ### Changing the shortcut
 
 Go to `chrome://extensions/shortcuts` (`brave://extensions/shortcuts`) and rebind **Open the search palette**.
+
+Jumpbar needs Chrome 130 or newer. Some sites (Slack, GitHub, Notion…) use <kbd>Cmd</kbd>+<kbd>K</kbd> themselves; Jumpbar takes precedence, so rebind it if you prefer theirs.
 
 The overlay can't be injected into `chrome://` pages, the Web Store or the built-in PDF viewer. On those pages, <kbd>Cmd</kbd>+<kbd>K</kbd> does nothing.
 
@@ -81,9 +83,9 @@ The overlay can't be injected into `chrome://` pages, the Web Store or the built
 | `search` | Run a search with your default search engine |
 | `favicon` | Show site icons in results |
 | `storage` | Save your search engines |
-| `scripting` + all-sites access | Show the overlay on web pages, including tabs that were open before install |
+| `activeTab` + `scripting` | Show the overlay on the page you open it from. Jumpbar only runs on a page when you press the shortcut or click the toolbar icon |
 
-Jumpbar doesn't make network requests and doesn't collect or send any data.
+Jumpbar doesn't make network requests and doesn't collect or send any data. See [PRIVACY.md](PRIVACY.md).
 
 ## Project structure
 
@@ -93,6 +95,8 @@ background.js     Service worker: search across tabs/closed/history, tab actions
 palette.js        The palette UI (shadow DOM), mounted as an overlay
 content.js        Mounts the overlay on web pages
 options.html / .js  Search engine settings
+PRIVACY.md        Privacy policy
+STORE_LISTING.md  Chrome Web Store listing text and form answers
 icons/            Logo (SVG source and PNG sizes)
 ```
 

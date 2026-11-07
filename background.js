@@ -36,6 +36,10 @@ function score(query, title, url) {
   return total;
 }
 
+const isWebUrl = (url) => {
+  try { return ["http:", "https:"].includes(new URL(url).protocol); } catch { return false; }
+};
+
 function isNoise(url) {
   return !url || url.startsWith("chrome://newtab") || url.startsWith("chrome-search://");
 }
@@ -45,7 +49,7 @@ function isNoise(url) {
 async function search(rawQuery, currentTab) {
   const query = rawQuery.trim().toLowerCase();
 
-  const settings = await chrome.storage.sync.get({ includePrivate: true });
+  const settings = await chrome.storage.sync.get({ includePrivate: false });
   // With private/regular mixing off, a private window must not surface regular browsing (closed tabs, history).
   const hideRegular = !settings.includePrivate && !!currentTab?.incognito;
 
@@ -107,7 +111,7 @@ async function search(rawQuery, currentTab) {
 
   // 3. History
   for (const h of history) {
-    if (isNoise(h.url) || seen.has(h.url)) continue;
+    if (isNoise(h.url) || !isWebUrl(h.url) || seen.has(h.url)) continue;
     seen.add(h.url);
     results.push({ kind: "history", title: h.title || h.url, url: h.url });
   }
@@ -130,32 +134,52 @@ async function search(rawQuery, currentTab) {
 
 // ---------- activate ----------
 
-async function activate(item, sender) {
+// Messages come from our own content scripts, which run inside web pages. Treat their payload as
+// untrusted: validate every field and never open anything that wasn't an http(s) URL.
+const isId = (n) => Number.isInteger(n) && n >= 0;
+
+async function activate(item) {
+  if (!item || typeof item !== "object") throw new Error("bad item");
   switch (item.kind) {
     case "open":
+      if (!isId(item.tabId) || !isId(item.windowId)) throw new Error("bad ids");
       await chrome.tabs.update(item.tabId, { active: true });
       await chrome.windows.update(item.windowId, { focused: true });
       break;
     case "closed":
+      if (typeof item.sessionId !== "string") throw new Error("bad session");
       await chrome.sessions.restore(item.sessionId);
       break;
     case "history":
     case "url":
-    case "engine":
+      if (typeof item.url !== "string" || !isWebUrl(item.url)) throw new Error("bad url");
       await chrome.tabs.create({ url: item.url });
       break;
-    case "search":
-      await chrome.search.query({
-        text: item.text,
-        disposition: "NEW_TAB",
+    case "engine": {
+      // Only open URLs on a site the user has configured as a search engine, over https.
+      if (typeof item.url !== "string") throw new Error("bad url");
+      const target = new URL(item.url);
+      const { engines = [] } = await chrome.storage.sync.get({ engines: [] });
+      const known = engines.some((e) => {
+        try { return new URL(e.url).origin === target.origin; } catch { return false; }
       });
+      if (target.protocol !== "https:" || !known) throw new Error("unknown engine");
+      await chrome.tabs.create({ url: target.href });
       break;
+    }
+    case "search":
+      if (typeof item.text !== "string" || !item.text.trim() || item.text.length > 2000) throw new Error("bad text");
+      await chrome.search.query({ text: item.text, disposition: "NEW_TAB" });
+      break;
+    default:
+      throw new Error("unknown kind");
   }
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === "search") {
-    search(msg.query, sender.tab).then(sendResponse, () => sendResponse([]));
+  if (sender.id !== chrome.runtime.id || !msg || typeof msg !== "object") return;
+  if (msg.type === "search" && typeof msg.query === "string") {
+    search(msg.query.slice(0, 500), sender.tab).then(sendResponse, () => sendResponse([]));
     return true;
   }
   if (msg.type === "options") {
@@ -163,7 +187,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return;
   }
   if (msg.type === "activate") {
-    activate(msg.item, sender).then(() => sendResponse(true), () => sendResponse(false));
+    activate(msg.item).then(() => sendResponse(true), () => sendResponse(false));
     return true;
   }
 });
@@ -181,7 +205,7 @@ async function togglePalette() {
     await chrome.tabs.sendMessage(tab.id, { type: "toggle" });
   } catch {
     try {
-      // Tab predates the install, or the content script hasn't loaded yet.
+      // First use on this page: inject on demand (the keypress/click grants activeTab).
       await inject(tab.id);
       await chrome.tabs.sendMessage(tab.id, { type: "toggle" });
     } catch {
@@ -194,9 +218,3 @@ chrome.commands.onCommand.addListener((command) => {
   if (command === "toggle-palette") togglePalette();
 });
 chrome.action.onClicked.addListener(togglePalette);
-
-// Make the palette work in tabs that were already open at install time.
-chrome.runtime.onInstalled.addListener(async () => {
-  const tabs = await chrome.tabs.query({ url: ["http://*/*", "https://*/*"] });
-  await Promise.allSettled(tabs.map((t) => inject(t.id)));
-});

@@ -90,7 +90,7 @@ function validate({ name, shortcut, url }) {
   if (!url.includes("%s")) return "The URL needs %s where the query should go.";
   try {
     const u = new URL(url);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return "Only http and https URLs are supported.";
+    if (u.protocol !== "https:") return "Only https URLs are supported.";
   } catch {
     return "That doesn't look like a valid URL.";
   }
@@ -129,7 +129,7 @@ for (const preset of PRESETS) {
   $("presets").append(b);
 }
 
-chrome.storage.sync.get({ engines: [], includePrivate: true }).then((r) => {
+chrome.storage.sync.get({ engines: [], includePrivate: false }).then((r) => {
   engines = r.engines;
   $("include-private").checked = r.includePrivate;
   renderList();

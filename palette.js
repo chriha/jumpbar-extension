@@ -1,5 +1,5 @@
 // The palette UI, mounted as an overlay by the content script.
-// Lives in a shadow root so page styles can't leak in or out.
+// Lives in a closed shadow root so page styles can't leak in or out and page scripts can't read it.
 window.createPalette = function createPalette() {
   const ICONS = {
     search:
@@ -131,6 +131,7 @@ window.createPalette = function createPalette() {
   const MOD = IS_MAC ? "⌘" : "Ctrl+";
   const DEFAULT_PLACEHOLDER = "Search tabs and history, or enter a URL…";
   let host = null;
+  let rootEl = null; // closed shadow roots aren't reachable via host.shadowRoot, so keep our own reference
   let input = null;
   let list = null;
   let pinned = null; // the "Search for…" row stays visible below the scrolling results
@@ -346,7 +347,7 @@ window.createPalette = function createPalette() {
   function open() {
     if (host) { input.focus(); return; }
     host = document.createElement("div");
-    const shadow = host.attachShadow({ mode: "open" });
+    const shadow = host.attachShadow({ mode: "closed" });
 
     const style = document.createElement("style");
     style.textContent = CSS;
@@ -367,6 +368,7 @@ window.createPalette = function createPalette() {
         </div>
       </div>`;
     shadow.append(style, root);
+    rootEl = root;
     input = shadow.querySelector("input");
     badge = shadow.querySelector(".badge");
     list = shadow.querySelector(".list");
@@ -422,11 +424,13 @@ window.createPalette = function createPalette() {
     if (!host) return;
     requestId++;
     const el = host;
+    const root = rootEl;
+    rootEl = null;
     host = input = list = pinned = results = badge = null;
     engine = null;
     items = [];
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return el.remove();
-    el.shadowRoot.querySelector(".root").classList.add("closing");
+    root.classList.add("closing");
     setTimeout(() => el.remove(), 130);
   }
 
