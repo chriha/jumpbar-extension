@@ -146,8 +146,6 @@ async function search(rawQuery, currentTab) {
       url: t.url,
       tabId: t.id,
       windowId: t.windowId,
-      pinned: t.pinned,
-      muted: !!t.mutedInfo?.muted,
       match: score(query, t.title, t.url),
       recency: t.lastAccessed || 0,
     }))
@@ -275,15 +273,9 @@ async function activate(item, query, sender) {
   }
 }
 
-async function tabAction(action, tabId) {
+async function closeTab(tabId) {
   if (!isId(tabId)) throw new Error("bad id");
-  const tab = await chrome.tabs.get(tabId);
-  switch (action) {
-    case "close": await chrome.tabs.remove(tabId); return {};
-    case "pin": await chrome.tabs.update(tabId, { pinned: !tab.pinned }); return { pinned: !tab.pinned };
-    case "mute": await chrome.tabs.update(tabId, { muted: !tab.mutedInfo?.muted }); return { muted: !tab.mutedInfo?.muted };
-    default: throw new Error("unknown action");
-  }
+  await chrome.tabs.remove(tabId);
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -296,8 +288,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     chrome.runtime.openOptionsPage();
     return;
   }
-  if (msg.type === "tabAction") {
-    tabAction(msg.action, msg.tabId).then(sendResponse, () => sendResponse(null));
+  if (msg.type === "closeTab") {
+    closeTab(msg.tabId).then(() => sendResponse(true), () => sendResponse(false));
     return true;
   }
   if (msg.type === "activate") {

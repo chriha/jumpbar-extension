@@ -235,7 +235,7 @@ window.createPalette = function createPalette() {
     const tag = document.createElement("div");
     tag.className = "tag";
     const label = document.createElement("span");
-    label.textContent = LABELS[item.kind] + (item.pinned ? " · Pinned" : "") + (item.muted ? " · Muted" : "");
+    label.textContent = LABELS[item.kind];
     const kbd = document.createElement("span");
     kbd.className = "kbd";
     kbd.textContent = "↵";
@@ -319,37 +319,16 @@ window.createPalette = function createPalette() {
     }
   }
 
-  // Close / pin / mute the selected open tab without leaving the palette.
-  async function tabAction(action) {
+  // Close the selected open tab without leaving the palette.
+  async function closeSelectedTab() {
     const item = items[selected];
     if (item?.kind !== "open") return;
-    const res = await chrome.runtime.sendMessage({ type: "tabAction", action, tabId: item.tabId });
-    if (!res || !host || items[selected] !== item) return;
+    const ok = await chrome.runtime.sendMessage({ type: "closeTab", tabId: item.tabId });
+    if (!ok || !host || items[selected] !== item) return;
     const index = selected;
-    if (action === "close") items.splice(index, 1);
-    else Object.assign(item, res);
+    items.splice(index, 1);
     render();
     select(Math.min(index, items.length - 1));
-  }
-
-  const isWeb = (url) => /^https?:\/\//i.test(url || "");
-
-  function flash(message) {
-    const el = foot?.querySelector(".flash");
-    if (!el) return;
-    el.textContent = message;
-    el.hidden = false;
-    clearTimeout(flash.timer);
-    flash.timer = setTimeout(() => (el.hidden = true), 1500);
-  }
-
-  async function copy(url) {
-    try {
-      await navigator.clipboard.writeText(url);
-      flash("Copied URL");
-    } catch {
-      flash("Couldn't copy");
-    }
   }
 
   function onKeyDown(e) {
@@ -362,9 +341,10 @@ window.createPalette = function createPalette() {
       const url = items[selected]?.url;
       if (input.selectionStart === input.selectionEnd && isWeb(url)) { e.preventDefault(); copy(url); return; }
     }
-    if (IS_MAC ? e.metaKey : e.ctrlKey) {
-      const action = e.key === "Backspace" ? "close" : e.shiftKey && e.code === "KeyP" ? "pin" : e.shiftKey && e.code === "KeyU" ? "mute" : null;
-      if (action) { e.preventDefault(); tabAction(action); return; }
+    if ((IS_MAC ? e.metaKey : e.ctrlKey) && e.key === "Backspace") {
+      e.preventDefault();
+      closeSelectedTab();
+      return;
     }
     switch (e.key) {
       case "Escape": e.preventDefault(); window.__paletteEscDown = true; lastEscAt = performance.now(); escape(); break;
@@ -415,7 +395,7 @@ window.createPalette = function createPalette() {
           <span><span class="kbd">↵</span> open</span>
           <span><span class="kbd">${MOD}↵</span> search web</span>
           <span class="esc-hint"><span class="kbd">esc</span> close</span>
-          <span class="tab-hint" hidden><span class="kbd">${MOD}⌫</span> close tab <span class="kbd">${MOD}⇧P</span> pin <span class="kbd">${MOD}⇧U</span> mute</span>
+          <span class="tab-hint" hidden><span class="kbd">${MOD}⌫</span> close tab</span>
           <span class="flash" hidden></span>
           <span class="link" data-act="options">Search engines…</span>
         </div>
