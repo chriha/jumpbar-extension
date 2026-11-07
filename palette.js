@@ -117,6 +117,7 @@ window.createPalette = function createPalette() {
     .foot span { display: flex; align-items: center; gap: 6px; }
     .foot .kbd { display: grid; height: 18px; min-width: 18px; }
     .foot [hidden] { display: none; }
+    .foot .flash { color: var(--accent); font-weight: 600; }
     .foot .link { margin-left: auto; cursor: pointer; }
     .foot .link:hover { color: var(--text); }
     .root.closing { animation: fade-out 120ms ease-in forwards; pointer-events: none; }
@@ -331,9 +332,36 @@ window.createPalette = function createPalette() {
     select(Math.min(index, items.length - 1));
   }
 
+  const isWeb = (url) => /^https?:\/\//i.test(url || "");
+
+  function flash(message) {
+    const el = foot?.querySelector(".flash");
+    if (!el) return;
+    el.textContent = message;
+    el.hidden = false;
+    clearTimeout(flash.timer);
+    flash.timer = setTimeout(() => (el.hidden = true), 1500);
+  }
+
+  async function copy(url) {
+    try {
+      await navigator.clipboard.writeText(url);
+      flash("Copied URL");
+    } catch {
+      flash("Couldn't copy");
+    }
+  }
+
   function onKeyDown(e) {
     e.stopPropagation(); // keep keystrokes away from the host page
     if (e.isComposing) return;
+    // Copy: Cmd/Ctrl+C copies the selected result's URL (unless text is selected in the input);
+    // Cmd/Ctrl+Shift+C copies the URL of the page the palette is open on.
+    if ((IS_MAC ? e.metaKey : e.ctrlKey) && e.code === "KeyC" && !e.altKey) {
+      if (e.shiftKey) { e.preventDefault(); copy(location.href); return; }
+      const url = items[selected]?.url;
+      if (input.selectionStart === input.selectionEnd && isWeb(url)) { e.preventDefault(); copy(url); return; }
+    }
     if (IS_MAC ? e.metaKey : e.ctrlKey) {
       const action = e.key === "Backspace" ? "close" : e.shiftKey && e.code === "KeyP" ? "pin" : e.shiftKey && e.code === "KeyU" ? "mute" : null;
       if (action) { e.preventDefault(); tabAction(action); return; }
@@ -388,6 +416,7 @@ window.createPalette = function createPalette() {
           <span><span class="kbd">${MOD}↵</span> search web</span>
           <span class="esc-hint"><span class="kbd">esc</span> close</span>
           <span class="tab-hint" hidden><span class="kbd">${MOD}⌫</span> close tab <span class="kbd">${MOD}⇧P</span> pin <span class="kbd">${MOD}⇧U</span> mute</span>
+          <span class="flash" hidden></span>
           <span class="link" data-act="options">Search engines…</span>
         </div>
       </div>`;
