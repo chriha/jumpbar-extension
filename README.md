@@ -65,14 +65,7 @@ Then in the palette: type `yt`, press <kbd>Tab</kbd>, type `lofi beats`, press <
 
 Go to `chrome://extensions/shortcuts` (`brave://extensions/shortcuts`) and rebind **Open the search palette**.
 
-## What about Cmd+T?
-
-Browsers reserve <kbd>Cmd</kbd>+<kbd>T</kbd> (<kbd>Ctrl</kbd>+<kbd>T</kbd> on Windows/Linux), so an extension can't rebind it. Jumpbar does two things instead:
-
-- It uses <kbd>Cmd</kbd>+<kbd>K</kbd> for the overlay.
-- It replaces the **New Tab page** with the same palette on a plain background, so opening a new tab also lands in the palette.
-
-The overlay can't be injected into `chrome://` pages, the Web Store or the built-in PDF viewer. On those pages, <kbd>Cmd</kbd>+<kbd>K</kbd> opens a new tab with the palette instead.
+The overlay can't be injected into `chrome://` pages, the Web Store or the built-in PDF viewer. On those pages, <kbd>Cmd</kbd>+<kbd>K</kbd> does nothing.
 
 ## Permissions
 
@@ -93,9 +86,8 @@ Jumpbar doesn't make network requests and doesn't collect or send any data.
 ```
 manifest.json     Manifest V3 config, shortcut, permissions
 background.js     Service worker: search across tabs/closed/history, tab actions
-palette.js        The palette UI (shadow DOM), shared by overlay and New Tab page
+palette.js        The palette UI (shadow DOM), mounted as an overlay
 content.js        Mounts the overlay on web pages
-ntp.html / .js    New Tab page hosting the palette
 options.html / .js  Search engine settings
 icons/            Logo (SVG source and PNG sizes)
 ```

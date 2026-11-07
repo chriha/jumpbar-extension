@@ -1,6 +1,6 @@
-// The palette UI. Shared by the content script (overlay) and the New Tab page.
+// The palette UI, mounted as an overlay by the content script.
 // Lives in a shadow root so page styles can't leak in or out.
-window.createPalette = function createPalette({ page }) {
+window.createPalette = function createPalette() {
   const ICONS = {
     search:
       '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M13.2 13.2 17 17"/></svg>',
@@ -42,7 +42,6 @@ window.createPalette = function createPalette({ page }) {
       -webkit-font-smoothing: antialiased;
       animation: fade 140ms ease-out;
     }
-    .root.page { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
     @media (prefers-color-scheme: light) {
       .root {
         --bg: rgba(255, 255, 255, 0.86);
@@ -285,7 +284,7 @@ window.createPalette = function createPalette({ page }) {
     if (item.kind === "hint") return enterEngine(item.engine);
     if (item.kind === "engine") item = { kind: "engine", url: item.target };
     chrome.runtime.sendMessage({ type: "activate", item });
-    if (!page) close();
+    close();
   }
 
   // Esc: clear the input first (keeping focus), close when it's already empty.
@@ -307,7 +306,7 @@ window.createPalette = function createPalette({ page }) {
       input.value = "";
       input.focus();
       runSearch("");
-    } else if (!page) {
+    } else {
       close();
     }
   }
@@ -353,7 +352,7 @@ window.createPalette = function createPalette({ page }) {
     style.textContent = CSS;
 
     const root = document.createElement("div");
-    root.className = page ? "root page" : "root";
+    root.className = "root";
     root.innerHTML = `
       <div class="box">
         <div class="field">${ICONS.search}<span class="badge" hidden></span><input type="text" spellcheck="false" autocomplete="off"
@@ -404,12 +403,12 @@ window.createPalette = function createPalette({ page }) {
     });
     shadow.querySelector('[data-act="options"]').addEventListener("click", () => {
       chrome.runtime.sendMessage({ type: "options" });
-      if (!page) close();
+      close();
     });
     root.addEventListener("mousedown", (e) => {
       if (e.target === root) {
         e.preventDefault();
-        if (!page) close();
+        close();
       }
     });
 

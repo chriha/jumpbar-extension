@@ -1,7 +1,6 @@
 // Service worker: owns all browser-API access (tabs, history, sessions, search).
 
 const MAX_RESULTS = 10;
-const NTP_URL = chrome.runtime.getURL("ntp.html");
 
 // ---------- helpers ----------
 
@@ -38,7 +37,7 @@ function score(query, title, url) {
 }
 
 function isNoise(url) {
-  return !url || url === NTP_URL || url.startsWith("chrome://newtab") || url.startsWith("chrome-search://");
+  return !url || url.startsWith("chrome://newtab") || url.startsWith("chrome-search://");
 }
 
 // ---------- search ----------
@@ -128,29 +127,23 @@ async function search(rawQuery, currentTab) {
 // ---------- activate ----------
 
 async function activate(item, sender) {
-  const senderTab = sender.tab;
-  const fromNtp = senderTab?.url === NTP_URL;
-
   switch (item.kind) {
     case "open":
       await chrome.tabs.update(item.tabId, { active: true });
       await chrome.windows.update(item.windowId, { focused: true });
-      if (fromNtp) await chrome.tabs.remove(senderTab.id);
       break;
     case "closed":
       await chrome.sessions.restore(item.sessionId);
-      if (fromNtp) await chrome.tabs.remove(senderTab.id);
       break;
     case "history":
     case "url":
     case "engine":
-      if (fromNtp) await chrome.tabs.update(senderTab.id, { url: item.url });
-      else await chrome.tabs.create({ url: item.url });
+      await chrome.tabs.create({ url: item.url });
       break;
     case "search":
       await chrome.search.query({
         text: item.text,
-        disposition: fromNtp ? "CURRENT_TAB" : "NEW_TAB",
+        disposition: "NEW_TAB",
       });
       break;
   }
@@ -188,8 +181,7 @@ async function togglePalette() {
       await inject(tab.id);
       await chrome.tabs.sendMessage(tab.id, { type: "toggle" });
     } catch {
-      // Restricted page (chrome://, Web Store, PDF viewer…): fall back to the New Tab palette.
-      await chrome.tabs.create({});
+      // Restricted page (chrome://, Web Store, PDF viewer…): the overlay can't be shown there.
     }
   }
 }
