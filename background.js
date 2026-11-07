@@ -174,7 +174,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // ---------- toggling ----------
 
 async function inject(tabId) {
-  await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+  await chrome.scripting.executeScript({ target: { tabId }, files: ["palette.js", "content.js"] });
 }
 
 async function togglePalette() {

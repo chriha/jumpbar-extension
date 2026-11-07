@@ -86,8 +86,6 @@ The overlay can't be injected into `chrome://` pages, the Web Store or the built
 | `storage` | Save your search engines |
 | `scripting` + all-sites access | Show the overlay on web pages, including tabs that were open before install |
 
-The palette runs in an extension iframe, so keystrokes typed into it never reach the page or other extensions. This is why it works alongside keyboard extensions like Vimium, which would otherwise swallow <kbd>Esc</kbd>.
-
 Jumpbar doesn't make network requests and doesn't collect or send any data.
 
 ## Project structure
@@ -95,9 +93,8 @@ Jumpbar doesn't make network requests and doesn't collect or send any data.
 ```
 manifest.json     Manifest V3 config, shortcut, permissions
 background.js     Service worker: search across tabs/closed/history, tab actions
-palette.js        The palette UI (shadow DOM), shared by the iframe and the New Tab page
-content.js        Embeds the palette as a full-viewport iframe on web pages
-frame.html / .js  The extension page inside that iframe (hosts the palette)
+palette.js        The palette UI (shadow DOM), shared by overlay and New Tab page
+content.js        Mounts the overlay on web pages
 ntp.html / .js    New Tab page hosting the palette
 options.html / .js  Search engine settings
 icons/            Logo (SVG source and PNG sizes)
