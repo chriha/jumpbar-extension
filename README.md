@@ -22,7 +22,8 @@
 - **One search box for everything**, in this priority order:
   1. open tabs
   2. recently closed tabs
-  3. browsing history
+  3. bookmarks
+  4. browsing history
 - **Fuzzy matching.** Typing `ghb` finds GitHub. Exact and word-start matches rank first, and history is ordered by how often and how recently you visit a page.
 - **Open sites directly.** Type `www.example.com`, `https://…` or `example.com` and press <kbd>Enter</kbd>.
 - **Web search always one keystroke away.** A "Search for…" row stays pinned below the results, and <kbd>Cmd</kbd>+<kbd>Enter</kbd> searches the web even when tabs match. Results are capped at 10.
@@ -84,6 +85,7 @@ The overlay can't be injected into `chrome://` pages, the Web Store or the built
 | --- | --- |
 | `tabs` | List and switch between open tabs |
 | `sessions` | List and restore recently closed tabs |
+| `bookmarks` | Search bookmarks |
 | `history` | Search browsing history |
 | `search` | Run a search with your default search engine |
 | `favicon` | Show site icons in results |
@@ -117,7 +119,6 @@ icons/            Logo (SVG source and PNG sizes)
 
 ## Roadmap
 
-- Bookmarks as a result source
 - Import/export of search engines
 
 ## Development

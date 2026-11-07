@@ -11,6 +11,7 @@ window.createPalette = function createPalette() {
   const LABELS = {
     open: "Switch to Tab",
     closed: "Reopen",
+    bookmark: "Bookmark",
     history: "History",
     url: "Open",
     search: "Search",
@@ -129,7 +130,7 @@ window.createPalette = function createPalette() {
 
   const IS_MAC = /mac/i.test(navigator.userAgentData?.platform || navigator.platform);
   const MOD = IS_MAC ? "⌘" : "Ctrl+";
-  const DEFAULT_PLACEHOLDER = "Search tabs and history, or enter a URL…";
+  const DEFAULT_PLACEHOLDER = "Search tabs, bookmarks and history, or enter a URL…";
   let host = null;
   let rootEl = null; // closed shadow roots aren't reachable via host.shadowRoot, so keep our own reference
   let input = null;

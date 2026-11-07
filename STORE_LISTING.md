@@ -79,6 +79,7 @@ Quickly find and switch to open tabs, recently closed tabs, browsing history and
 | Permission | Justification |
 | --- | --- |
 | `tabs` | Reads titles and URLs of open tabs so the user can search them and switch to the chosen tab. |
+| `bookmarks` | Searches the user's bookmarks for results matching the typed query. Results are shown locally and never transmitted. |
 | `history` | Searches the user's browsing history for results matching the typed query. Results are shown locally and never transmitted. |
 | `sessions` | Lists and restores recently closed tabs and windows. |
 | `search` | Runs a web search with the user's default search engine when the user chooses "Search for…". |

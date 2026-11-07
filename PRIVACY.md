@@ -2,7 +2,7 @@
 
 _Last updated: 7 November 2026_
 
-Jumpbar is a browser extension that lets you search your open tabs, recently closed tabs and browsing history from a keyboard-driven palette. **It does not collect, store on any server, share, or sell your data.**
+Jumpbar is a browser extension that lets you search your open tabs, recently closed tabs, bookmarks and browsing history from a keyboard-driven palette. **It does not collect, store on any server, share, or sell your data.**
 
 ## What Jumpbar accesses
 
@@ -10,6 +10,7 @@ Jumpbar reads the following **locally in your browser**, only while you are usin
 
 - **Open tabs**: titles and URLs, to let you search and switch between them.
 - **Recently closed tabs**: titles and URLs, so you can reopen them.
+- **Bookmarks**: titles and URLs matching what you type.
 - **Browsing history**: titles and URLs matching what you type.
 - **Site icons**: fetched from Chrome's own local favicon cache.
 
@@ -38,6 +39,7 @@ By default, private and regular browsing stay separate: regular windows never sh
 | --- | --- |
 | `tabs` | Read titles and URLs of open tabs and switch to them |
 | `sessions` | List and restore recently closed tabs |
+| `bookmarks` | Search your bookmarks |
 | `history` | Search your browsing history |
 | `search` | Run a search with your default search engine |
 | `favicon` | Show site icons in results |

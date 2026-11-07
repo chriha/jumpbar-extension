@@ -82,12 +82,14 @@ async function search(rawQuery, currentTab) {
   // With private/regular mixing off, a private window must not surface regular browsing (closed tabs, history).
   const hideRegular = !settings.includePrivate && !!currentTab?.incognito;
 
-  const [tabs, closed, history] = await Promise.all([
+  const [tabs, closed, history, bookmarks] = await Promise.all([
     chrome.tabs.query({}),
     hideRegular ? Promise.resolve([]) : chrome.sessions.getRecentlyClosed({ maxResults: 25 }),
     query && !hideRegular
       ? chrome.history.search({ text: rawQuery.trim(), maxResults: 100, startTime: 0 })
       : Promise.resolve([]),
+    // Bookmarks are saved on purpose, but a private window shouldn't surface regular browsing data.
+    query && !hideRegular ? chrome.bookmarks.search(query).catch(() => []) : Promise.resolve([]),
   ]);
 
   // The tab the palette is opened from is never a result, so Cmd+K, Enter jumps to the previous tab.
@@ -138,7 +140,20 @@ async function search(rawQuery, currentTab) {
     results.push(i);
   }
 
-  // 3. History, ranked by match quality plus a visit-count/recency boost
+  // 3. Bookmarks (folders have no url)
+  const bookmarkItems = [];
+  for (const b of bookmarks) {
+    if (!b.url || isNoise(b.url) || !isWebUrl(b.url) || seen.has(b.url)) continue;
+    bookmarkItems.push({ kind: "bookmark", title: b.title || b.url, url: b.url, rank: score(query, b.title, b.url) || 1 });
+  }
+  bookmarkItems.sort((a, b) => b.rank - a.rank);
+  for (const i of bookmarkItems) {
+    if (seen.has(i.url)) continue;
+    seen.add(i.url);
+    results.push(i);
+  }
+
+  // 4. History, ranked by match quality plus a visit-count/recency boost
   const historyItems = [];
   for (const h of history) {
     if (isNoise(h.url) || !isWebUrl(h.url) || seen.has(h.url)) continue;
@@ -154,7 +169,7 @@ async function search(rawQuery, currentTab) {
 
   const capped = results.slice(0, MAX_RESULTS);
 
-  // 4. Direct URL / web search actions
+  // 5. Direct URL / web search actions
   const actions = [];
   if (query && looksLikeUrl(rawQuery)) {
     actions.push({ kind: "url", title: rawQuery.trim(), url: normalizeUrl(rawQuery) });
@@ -186,6 +201,7 @@ async function activate(item) {
       if (typeof item.sessionId !== "string") throw new Error("bad session");
       await chrome.sessions.restore(item.sessionId);
       break;
+    case "bookmark":
     case "history":
     case "url":
       if (typeof item.url !== "string" || !isWebUrl(item.url)) throw new Error("bad url");
