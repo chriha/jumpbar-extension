@@ -404,7 +404,9 @@ window.createPalette = function createPalette() {
   function open() {
     if (host) { input.focus(); return; }
     host = document.createElement("div");
-    const shadow = host.attachShadow({ mode: "closed" });
+    // Must be "open": Vimium finds the focused input via host.shadowRoot.activeElement. With a closed
+    // root it only sees the host div, thinks we're not in an input, and runs its key bindings.
+    const shadow = host.attachShadow({ mode: "open" });
 
     const style = document.createElement("style");
     style.textContent = CSS;
